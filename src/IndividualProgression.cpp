@@ -4,6 +4,7 @@
 
 #include "IndividualProgression.h"
 #include "naxxramas_40.h"
+#include <array>
 
 IndividualProgression* IndividualProgression::instance()
 {
@@ -238,6 +239,65 @@ void IndividualProgression::SyncBotsProgressionToLeader(Group* group)
         ForceUpdateProgressionState(member, static_cast<ProgressionState>(refProgress));
         CheckAdjustments(member);
     }
+}
+
+bool IndividualProgression::IsItemAllowedForProgression(Player* player, uint32 itemId) const
+{
+    ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId);
+    if (!proto)
+    {
+        return false;
+    }
+
+    uint8 currentState = player->GetPlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE).value;
+
+    struct ProgressionItemCap
+    {
+        ProgressionState state;
+        uint32 maxRequiredLevel;
+        uint32 maxItemLevel;
+    };
+
+    // Caps derived from representative tier item levels (MC/BWL/AQ/Naxx, Kara/SSC/BT/ZA/Sunwell, Naxx/Uld/ToC/ICC/RS); conservative to prevent early BiS.
+    static constexpr std::array<ProgressionItemCap, 19> caps = {{
+        { PROGRESSION_START,          IP_LEVEL_VANILLA, 66  }, // starter greens
+        { PROGRESSION_MOLTEN_CORE,    IP_LEVEL_VANILLA, 74  },
+        { PROGRESSION_ONYXIA,         IP_LEVEL_VANILLA, 76  },
+        { PROGRESSION_BLACKWING_LAIR, IP_LEVEL_VANILLA, 83  },
+        { PROGRESSION_PRE_AQ,         IP_LEVEL_VANILLA, 88  },
+        { PROGRESSION_AQ_WAR,         IP_LEVEL_VANILLA, 90  },
+        { PROGRESSION_AQ,             IP_LEVEL_VANILLA, 92  },
+        { PROGRESSION_NAXX40,         IP_LEVEL_VANILLA, 92  },
+        { PROGRESSION_PRE_TBC,        IP_LEVEL_TBC,     125 }, // Karazhan/Gruul/Mag
+        { PROGRESSION_TBC_TIER_1,     IP_LEVEL_TBC,     141 }, // SSC/TK
+        { PROGRESSION_TBC_TIER_2,     IP_LEVEL_TBC,     154 }, // Hyjal/BT
+        { PROGRESSION_TBC_TIER_3,     IP_LEVEL_TBC,     154 }, // ZA
+        { PROGRESSION_TBC_TIER_4,     IP_LEVEL_TBC,     164 }, // Sunwell
+        { PROGRESSION_TBC_TIER_5,     IP_LEVEL_WOTLK,   213 }, // WotLK entry (Naxx/OS/EoE)
+        { PROGRESSION_WOTLK_TIER_1,   IP_LEVEL_WOTLK,   226 }, // Ulduar 10/25
+        { PROGRESSION_WOTLK_TIER_2,   IP_LEVEL_WOTLK,   245 }, // ToC
+        { PROGRESSION_WOTLK_TIER_3,   IP_LEVEL_WOTLK,   264 }, // ICC normal
+        { PROGRESSION_WOTLK_TIER_4,   IP_LEVEL_WOTLK,   277 }, // ICC heroic
+        { PROGRESSION_WOTLK_TIER_5,   IP_LEVEL_WOTLK,   284 }  // Ruby Sanctum
+    }};
+
+    ProgressionItemCap activeCap = caps.back();
+    for (ProgressionItemCap const& cap : caps)
+    {
+        if (currentState == cap.state)
+        {
+            activeCap = cap;
+            break;
+        }
+
+        if (currentState < cap.state)
+        {
+            break;
+        }
+        activeCap = cap;
+    }
+
+    return proto->RequiredLevel <= activeCap.maxRequiredLevel && proto->ItemLevel <= activeCap.maxItemLevel;
 }
 
 void IndividualProgression::checkIPPhasing(Player* player, uint32 newArea)
