@@ -1,3 +1,5 @@
+// ABOUTME: Handles Dark Keeper portrait gossip in Blackrock Depths.
+// ABOUTME: Spawns a random Dark Keeper and matching portrait object once per vault.
 /*
  * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
  *
@@ -42,7 +44,7 @@ public:
 
     uint8_t DATA_TYPE_VAULT = 0;
 
-    bool OnGossipHello(Player* player, GameObject* go) override
+    bool OnGossipHello(Player* player, GameObject* /*go*/) override
     {
         switch (urand(0, 5))
         {

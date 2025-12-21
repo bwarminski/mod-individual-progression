@@ -17,8 +17,10 @@
 #include "DBCEnums.h"
 #include "QuestDef.h"
 #include "GameObject.h"
+#include "ProgressionConditionProvider.h"
 #include "AreaDefines.h"
 #include "IWorld.h"
+#include <memory>
 #include <regex>
 #include <vector>
 
@@ -384,13 +386,6 @@ class IndividualProgression
 public:
     static IndividualProgression* instance();
 
-    struct ProgressionItemCap
-    {
-        ProgressionState state;
-        uint32 maxRequiredLevel;
-        uint32 maxItemLevel;
-    };
-
     std::map<uint32, uint8> customProgressionMap;
     questXpMapType questXpMap;
     float vanillaPowerAdjustment, vanillaHealthAdjustment, tbcPowerAdjustment, tbcHealthAdjustment, vanillaHealingAdjustment, tbcHealingAdjustment;
@@ -398,8 +393,6 @@ public:
     int progressionLimit, startingProgression, tbcRacesProgressionLevel, deathKnightProgressionLevel, deathKnightStartingProgression, RequiredZulGurubProgression, tbcArenaSeason, wotlkArenaSeason;
     uint32 VanillaPvpKillRank1, VanillaPvpKillRank2, VanillaPvpKillRank3, VanillaPvpKillRank4, VanillaPvpKillRank5, VanillaPvpKillRank6, VanillaPvpKillRank7, VanillaPvpKillRank8, VanillaPvpKillRank9, VanillaPvpKillRank10, VanillaPvpKillRank11, VanillaPvpKillRank12, VanillaPvpKillRank13, VanillaPvpKillRank14;
     std::string excludedAccountsRegex;
-    std::vector<ProgressionItemCap> progressionItemCaps;
-
     bool hasPassedProgression(Player* player, ProgressionState state) const;
     static bool isBeforeProgression(Player* player, ProgressionState state) ;
     void UpdateProgressionState(Player* player, ProgressionState newState) const;
@@ -426,8 +419,10 @@ public:
     static float ComputeVanillaAdjustment(uint8 playerLevel, float configAdjustmentValue);
     static uint8 GetAccountProgression(uint32 accountId);
 
-    std::vector<ProgressionItemCap> const& GetProgressionItemCaps() const;
-    void LoadProgressionItemCaps();
+    void SetProgressionConditionProvider(std::shared_ptr<ProgressionConditionProvider> provider);
+
+private:
+    std::shared_ptr<ProgressionConditionProvider> progressionConditionProvider;
 };
 
 #define sIndividualProgression IndividualProgression::instance()
