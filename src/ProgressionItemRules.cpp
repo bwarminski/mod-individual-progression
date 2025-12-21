@@ -7,10 +7,5 @@
 
 bool IsItemAllowedForProgression(Player* player, uint32 itemId)
 {
-    if (!sIndividualProgression->enabled)
-    {
-        return true;
-    }
-
     return sIndividualProgression->IsItemAllowedForProgression(player, itemId);
 }
