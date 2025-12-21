@@ -1,0 +1,75 @@
+#
+# Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license: https://github.com/azerothcore/azerothcore-wotlk/blob/master/LICENSE-AGPL3
+#
+
+[worldserver]
+
+########################################
+# Individual Progression Item Caps
+########################################
+#
+# Configure per-progression item caps for required level and item level.
+# Keys are based on ProgressionState enum values in IndividualProgression.h.
+#
+# IndividualProgression.ItemCaps.<state>.MaxRequiredLevel
+# IndividualProgression.ItemCaps.<state>.MaxItemLevel
+#
+# Default: values below match conservative tier ceilings to prevent early BiS.
+#
+
+IndividualProgression.ItemCaps.0.MaxRequiredLevel = 60
+IndividualProgression.ItemCaps.0.MaxItemLevel = 66
+
+IndividualProgression.ItemCaps.1.MaxRequiredLevel = 60
+IndividualProgression.ItemCaps.1.MaxItemLevel = 74
+
+IndividualProgression.ItemCaps.2.MaxRequiredLevel = 60
+IndividualProgression.ItemCaps.2.MaxItemLevel = 76
+
+IndividualProgression.ItemCaps.3.MaxRequiredLevel = 60
+IndividualProgression.ItemCaps.3.MaxItemLevel = 83
+
+IndividualProgression.ItemCaps.4.MaxRequiredLevel = 60
+IndividualProgression.ItemCaps.4.MaxItemLevel = 88
+
+IndividualProgression.ItemCaps.5.MaxRequiredLevel = 60
+IndividualProgression.ItemCaps.5.MaxItemLevel = 90
+
+IndividualProgression.ItemCaps.6.MaxRequiredLevel = 60
+IndividualProgression.ItemCaps.6.MaxItemLevel = 92
+
+IndividualProgression.ItemCaps.7.MaxRequiredLevel = 60
+IndividualProgression.ItemCaps.7.MaxItemLevel = 92
+
+IndividualProgression.ItemCaps.8.MaxRequiredLevel = 70
+IndividualProgression.ItemCaps.8.MaxItemLevel = 125
+
+IndividualProgression.ItemCaps.9.MaxRequiredLevel = 70
+IndividualProgression.ItemCaps.9.MaxItemLevel = 141
+
+IndividualProgression.ItemCaps.10.MaxRequiredLevel = 70
+IndividualProgression.ItemCaps.10.MaxItemLevel = 154
+
+IndividualProgression.ItemCaps.11.MaxRequiredLevel = 70
+IndividualProgression.ItemCaps.11.MaxItemLevel = 154
+
+IndividualProgression.ItemCaps.12.MaxRequiredLevel = 70
+IndividualProgression.ItemCaps.12.MaxItemLevel = 164
+
+IndividualProgression.ItemCaps.13.MaxRequiredLevel = 80
+IndividualProgression.ItemCaps.13.MaxItemLevel = 213
+
+IndividualProgression.ItemCaps.14.MaxRequiredLevel = 80
+IndividualProgression.ItemCaps.14.MaxItemLevel = 226
+
+IndividualProgression.ItemCaps.15.MaxRequiredLevel = 80
+IndividualProgression.ItemCaps.15.MaxItemLevel = 245
+
+IndividualProgression.ItemCaps.16.MaxRequiredLevel = 80
+IndividualProgression.ItemCaps.16.MaxItemLevel = 264
+
+IndividualProgression.ItemCaps.17.MaxRequiredLevel = 80
+IndividualProgression.ItemCaps.17.MaxItemLevel = 277
+
+IndividualProgression.ItemCaps.18.MaxRequiredLevel = 80
+IndividualProgression.ItemCaps.18.MaxItemLevel = 284

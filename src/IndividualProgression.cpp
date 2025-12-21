@@ -1,10 +1,42 @@
+// ABOUTME: Implements individual progression rules and configuration loading.
+// ABOUTME: Enforces progression gating and related behavior across the module.
 /*
  * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license: https://github.com/azerothcore/azerothcore-wotlk/blob/master/LICENSE-AGPL3
  */
 
 #include "IndividualProgression.h"
 #include "naxxramas_40.h"
-#include <array>
+#include <string>
+
+namespace
+{
+std::vector<IndividualProgression::ProgressionItemCap> const& GetDefaultProgressionItemCaps()
+{
+    static const std::vector<IndividualProgression::ProgressionItemCap> caps = {{
+        { PROGRESSION_START,          IP_LEVEL_VANILLA, 66  }, // starter greens
+        { PROGRESSION_MOLTEN_CORE,    IP_LEVEL_VANILLA, 74  },
+        { PROGRESSION_ONYXIA,         IP_LEVEL_VANILLA, 76  },
+        { PROGRESSION_BLACKWING_LAIR, IP_LEVEL_VANILLA, 83  },
+        { PROGRESSION_PRE_AQ,         IP_LEVEL_VANILLA, 88  },
+        { PROGRESSION_AQ_WAR,         IP_LEVEL_VANILLA, 90  },
+        { PROGRESSION_AQ,             IP_LEVEL_VANILLA, 92  },
+        { PROGRESSION_NAXX40,         IP_LEVEL_VANILLA, 92  },
+        { PROGRESSION_PRE_TBC,        IP_LEVEL_TBC,     125 }, // Karazhan/Gruul/Mag
+        { PROGRESSION_TBC_TIER_1,     IP_LEVEL_TBC,     141 }, // SSC/TK
+        { PROGRESSION_TBC_TIER_2,     IP_LEVEL_TBC,     154 }, // Hyjal/BT
+        { PROGRESSION_TBC_TIER_3,     IP_LEVEL_TBC,     154 }, // ZA
+        { PROGRESSION_TBC_TIER_4,     IP_LEVEL_TBC,     164 }, // Sunwell
+        { PROGRESSION_TBC_TIER_5,     IP_LEVEL_WOTLK,   213 }, // WotLK entry (Naxx/OS/EoE)
+        { PROGRESSION_WOTLK_TIER_1,   IP_LEVEL_WOTLK,   226 }, // Ulduar 10/25
+        { PROGRESSION_WOTLK_TIER_2,   IP_LEVEL_WOTLK,   245 }, // ToC
+        { PROGRESSION_WOTLK_TIER_3,   IP_LEVEL_WOTLK,   264 }, // ICC normal
+        { PROGRESSION_WOTLK_TIER_4,   IP_LEVEL_WOTLK,   277 }, // ICC heroic
+        { PROGRESSION_WOTLK_TIER_5,   IP_LEVEL_WOTLK,   284 }  // Ruby Sanctum
+    }};
+
+    return caps;
+}
+} // namespace
 
 IndividualProgression* IndividualProgression::instance()
 {
@@ -251,36 +283,7 @@ bool IndividualProgression::IsItemAllowedForProgression(Player* player, uint32 i
 
     uint8 currentState = player->GetPlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE).value;
 
-    struct ProgressionItemCap
-    {
-        ProgressionState state;
-        uint32 maxRequiredLevel;
-        uint32 maxItemLevel;
-    };
-
-    // Caps derived from representative tier item levels (MC/BWL/AQ/Naxx, Kara/SSC/BT/ZA/Sunwell, Naxx/Uld/ToC/ICC/RS); conservative to prevent early BiS.
-    static constexpr std::array<ProgressionItemCap, 19> caps = {{
-        { PROGRESSION_START,          IP_LEVEL_VANILLA, 66  }, // starter greens
-        { PROGRESSION_MOLTEN_CORE,    IP_LEVEL_VANILLA, 74  },
-        { PROGRESSION_ONYXIA,         IP_LEVEL_VANILLA, 76  },
-        { PROGRESSION_BLACKWING_LAIR, IP_LEVEL_VANILLA, 83  },
-        { PROGRESSION_PRE_AQ,         IP_LEVEL_VANILLA, 88  },
-        { PROGRESSION_AQ_WAR,         IP_LEVEL_VANILLA, 90  },
-        { PROGRESSION_AQ,             IP_LEVEL_VANILLA, 92  },
-        { PROGRESSION_NAXX40,         IP_LEVEL_VANILLA, 92  },
-        { PROGRESSION_PRE_TBC,        IP_LEVEL_TBC,     125 }, // Karazhan/Gruul/Mag
-        { PROGRESSION_TBC_TIER_1,     IP_LEVEL_TBC,     141 }, // SSC/TK
-        { PROGRESSION_TBC_TIER_2,     IP_LEVEL_TBC,     154 }, // Hyjal/BT
-        { PROGRESSION_TBC_TIER_3,     IP_LEVEL_TBC,     154 }, // ZA
-        { PROGRESSION_TBC_TIER_4,     IP_LEVEL_TBC,     164 }, // Sunwell
-        { PROGRESSION_TBC_TIER_5,     IP_LEVEL_WOTLK,   213 }, // WotLK entry (Naxx/OS/EoE)
-        { PROGRESSION_WOTLK_TIER_1,   IP_LEVEL_WOTLK,   226 }, // Ulduar 10/25
-        { PROGRESSION_WOTLK_TIER_2,   IP_LEVEL_WOTLK,   245 }, // ToC
-        { PROGRESSION_WOTLK_TIER_3,   IP_LEVEL_WOTLK,   264 }, // ICC normal
-        { PROGRESSION_WOTLK_TIER_4,   IP_LEVEL_WOTLK,   277 }, // ICC heroic
-        { PROGRESSION_WOTLK_TIER_5,   IP_LEVEL_WOTLK,   284 }  // Ruby Sanctum
-    }};
-
+    auto const& caps = GetProgressionItemCaps();
     ProgressionItemCap activeCap = caps.back();
     for (ProgressionItemCap const& cap : caps)
     {
@@ -298,6 +301,29 @@ bool IndividualProgression::IsItemAllowedForProgression(Player* player, uint32 i
     }
 
     return proto->RequiredLevel <= activeCap.maxRequiredLevel && proto->ItemLevel <= activeCap.maxItemLevel;
+}
+
+std::vector<IndividualProgression::ProgressionItemCap> const& IndividualProgression::GetProgressionItemCaps() const
+{
+    if (!progressionItemCaps.empty())
+    {
+        return progressionItemCaps;
+    }
+
+    return GetDefaultProgressionItemCaps();
+}
+
+void IndividualProgression::LoadProgressionItemCaps()
+{
+    progressionItemCaps.clear();
+
+    for (ProgressionItemCap const& cap : GetDefaultProgressionItemCaps())
+    {
+        std::string baseKey = "IndividualProgression.ItemCaps." + std::to_string(static_cast<uint32>(cap.state));
+        uint32 maxRequiredLevel = sConfigMgr->GetOption<uint32>(baseKey + ".MaxRequiredLevel", cap.maxRequiredLevel);
+        uint32 maxItemLevel = sConfigMgr->GetOption<uint32>(baseKey + ".MaxItemLevel", cap.maxItemLevel);
+        progressionItemCaps.push_back({cap.state, maxRequiredLevel, maxItemLevel});
+    }
 }
 
 void IndividualProgression::checkIPPhasing(Player* player, uint32 newArea)
@@ -1292,6 +1318,7 @@ private:
         sIndividualProgression->DisableRDF = sConfigMgr->GetOption<bool>("IndividualProgression.DisableRDF", false);
         sIndividualProgression->excludeAccounts = sConfigMgr->GetOption<bool>("IndividualProgression.ExcludeAccounts", true);
         sIndividualProgression->excludedAccountsRegex = sConfigMgr->GetOption<std::string>("IndividualProgression.ExcludedAccountsRegex", "^RNDBOT.*");
+        sIndividualProgression->LoadProgressionItemCaps();
     }
 
     static void LoadXpValues()
