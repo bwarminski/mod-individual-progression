@@ -9,15 +9,63 @@
 #include "DatabaseEnv.h"
 #include "ProgressionConditionProvider.h"
 #include "naxxramas_40.h"
-#include <unordered_map>
 #include <cstdlib>
 #include <string>
+#include <utility>
+
+ProgressionConditionStore::ProgressionConditionStore(ConditionLoader loader)
+    : loader(std::move(loader))
+{
+}
+
+ConditionList const& ProgressionConditionStore::GetConditionsForItem(uint32 itemId) const
+{
+    std::call_once(loadOnce, &ProgressionConditionStore::LoadAllConditions, this);
+
+    auto itr = itemConditions.find(itemId);
+    if (itr == itemConditions.end())
+    {
+        return emptyConditions;
+    }
+
+    return itr->second.conditions;
+}
+
+void ProgressionConditionStore::LoadAllConditions() const
+{
+    if (!loader)
+    {
+        return;
+    }
+
+    std::vector<Condition> rows = loader();
+    for (Condition const& condition : rows)
+    {
+        ItemConditions& entry = itemConditions[static_cast<uint32>(condition.SourceEntry)];
+        entry.storage.push_back(condition);
+    }
+
+    for (auto& entryPair : itemConditions)
+    {
+        ItemConditions& entry = entryPair.second;
+        entry.conditions.clear();
+        for (Condition& condition : entry.storage)
+        {
+            entry.conditions.push_back(&condition);
+        }
+    }
+}
 
 namespace
 {
 class DbProgressionConditionProvider : public ProgressionConditionProvider
 {
 public:
+    DbProgressionConditionProvider()
+        : conditionStore(LoadConditionsFromDatabase)
+    {
+    }
+
     bool IsItemAllowed(Player* player, uint32 itemId) const override
     {
         if (!player)
@@ -25,45 +73,29 @@ public:
             return false;
         }
 
-        ItemConditionCache& cacheEntry = GetItemConditions(itemId);
-        if (cacheEntry.conditions.empty())
+        ConditionList const& conditions = conditionStore.GetConditionsForItem(itemId);
+        if (conditions.empty())
         {
             return true;
         }
 
         ConditionSourceInfo sourceInfo(player);
-        return sConditionMgr->IsObjectMeetToConditions(sourceInfo, cacheEntry.conditions);
+        return sConditionMgr->IsObjectMeetToConditions(sourceInfo, conditions);
     }
 
 private:
-    struct ItemConditionCache
+    static std::vector<Condition> LoadConditionsFromDatabase()
     {
-        bool loaded = false;
-        std::vector<Condition> conditionStorage;
-        ConditionList conditions;
-    };
-
-    ItemConditionCache& GetItemConditions(uint32 itemId) const
-    {
-        ItemConditionCache& cacheEntry = itemConditionCache[itemId];
-        if (cacheEntry.loaded)
-        {
-            return cacheEntry;
-        }
-
-        cacheEntry.loaded = true;
-
+        std::vector<Condition> rows;
         QueryResult result = WorldDatabase.Query(
             "SELECT SourceTypeOrReferenceId, SourceGroup, SourceEntry, SourceId, ElseGroup, "
             "ConditionTypeOrReference, ConditionTarget, ConditionValue1, ConditionValue2, "
             "ConditionValue3, NegativeCondition, ErrorType, ErrorTextId, ScriptName "
-            "FROM conditions "
-            "WHERE SourceEntry = {}",
-            itemId);
+            "FROM conditions");
 
         if (!result)
         {
-            return cacheEntry;
+            return rows;
         }
 
         do
@@ -96,18 +128,13 @@ private:
             condition.ErrorType = fields[11].Get<uint32>();
             condition.ErrorTextId = fields[12].Get<uint32>();
             condition.ScriptId = sObjectMgr->GetScriptId(fields[13].Get<std::string>());
-            cacheEntry.conditionStorage.push_back(condition);
+            rows.push_back(condition);
         } while (result->NextRow());
 
-        for (Condition& condition : cacheEntry.conditionStorage)
-        {
-            cacheEntry.conditions.push_back(&condition);
-        }
-
-        return cacheEntry;
+        return rows;
     }
 
-    mutable std::unordered_map<uint32, ItemConditionCache> itemConditionCache;
+    ProgressionConditionStore conditionStore;
 };
 
 std::shared_ptr<ProgressionConditionProvider> GetDefaultProgressionConditionProvider()
